@@ -37,9 +37,13 @@
   },
   "homepage": "https://github.com/aui/file-cache-webpack-plugin#readme",
   "dependencies": {
+    "acorn": "^5.1.1",
     "find-cache-dir": "^1.0.0",
     "webpack": "^3.3.0",
     "webpack-sources": "^1.0.1"
+  },
+  "peerDependencies": {
+    "webpack": "^2.0.0 || ^3.0.0"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
@@ -64,9 +68,6 @@
   ],
   "engines": {
     "node": ">= 4.3 < 5.0.0 || >= 5.10"
-  },
-  "peerDependencies": {
-    "webpack": "^2.0.0 || ^3.0.0"
   },
   "pre-commit": "lint-staged",
   "lint-staged": {

@@ -2,8 +2,8 @@
 let ID = 0;
 const METDATA = '<METDATA>';
 const getType = value => (Object.prototype.toString.call(value).slice(8, -1));
-const toType = (type, value) => `<${type}>${value}`;
-const toValue = value => (Function(`return ${value}`)());
+const toType = (value, type) => `<${type}>${value}`;
+const toValue = value => (new Function(`return ${value}`)());
 
 
 export default class Serialization {
@@ -14,15 +14,15 @@ export default class Serialization {
 
   stringify(object) {
     const { constructors, map } = this;
-    return JSON.stringify(object, function encode(key, value) {
-      return Serialization.encode({ key, value, context: this, constructors, map });
+    return JSON.stringify(object, function encode(key) {
+      return Serialization.encode({ key, value: this[key], context: this, constructors, map });
     });
   }
 
   parse(object) {
-    const { constructor, map } = this;
+    const { constructors, map } = this;
     return JSON.parse(object, function decode(key, value) {
-      return Serialization.decode({ key, value, context: this, constructor, map });
+      return Serialization.decode({ key, value, context: this, constructors, map });
     });
   }
 
@@ -32,7 +32,7 @@ export default class Serialization {
     if (convertor) {
       return convertor(options);
     }
-    throw new Error(`"${options.key}" could not be encoded`);
+    throw new Error(`"${options.key}" encoding failed because the "${type}" type is not supported`);
   }
 
   static decode(options) {
@@ -41,13 +41,13 @@ export default class Serialization {
     if (convertor) {
       return convertor(options);
     }
-    throw new Error(`"${options.key}" could not be decoded`);
+    throw new Error(`"${options.key}" decoding failed because the "${type}" type is not supported`);
   }
 
   static getId(object) {
     if (!Serialization.getMetdata(object, 'id')) {
       ID += 1;
-      Serialization.addMetdata(object, 'id', ID);
+      Serialization.addMetdata(object, 'id', `object:${ID}`);
     }
     return Serialization.getMetdata(object, 'id');
   }
@@ -67,10 +67,20 @@ export default class Serialization {
     return null;
   }
 
-  static ['encode:RegExp']({ value }) { return toType(value); }
-  static ['encode:Date']({ value }) { return toType(value); }
-  static ['encode:Set']({ value }) { return toType([...value]); }
-  static ['encode:Map']({ value }) { return toType([...value]); }
+  static removeMetdata(object, key) {
+    if (object[METDATA]) {
+      if (key) {
+        delete object[METDATA][key];
+      } else {
+        delete object[METDATA];
+      }
+    }
+  }
+
+  static ['encode:RegExp']({ value }) { return toType(value, 'RegExp'); }
+  static ['encode:Date']({ value }) { return toType(value, 'Date'); }
+  // static ['encode:Set']({ value }) { return toType([...value], 'Set'); }
+  // static ['encode:Map']({ value }) { return toType([...value], 'Map'); }
   static ['encode:Undefined']({ value }) { return value; }
   static ['encode:Null']({ value }) { return value; }
   static ['encode:String']({ value }) { return value; }
@@ -78,32 +88,37 @@ export default class Serialization {
   static ['encode:Boolean']({ value }) { return value; }
   static ['encode:Array']({ value }) { return value; }
   static ['encode:Object']({ value, key, constructors, map }) {
+    if (key === METDATA) {
+      return value;
+    }
+
     const { name } = value.constructor;
     const id = Serialization.getId(value);
 
     if (map.has(id)) {
       Serialization.addMetdata(value, 'dependent', true);
-      return toType('ObjectDependencie', id);
+      return toType(id, 'ObjectDependencie');
     }
 
     if (typeof constructors[name] === 'function') {
       Serialization.addMetdata(value, 'constructor', name);
     } else if (name !== 'Object') {
-      throw new Error(`\`"${key}": <Object ${name}>\` could not be encoded`);
+      throw new Error(`"${key}" encoding failed because the "${name}" type is not supported`);
     }
     map.set(id, value);
     return value;
   }
 
   static ['decode:RegExp']({ value }) { return toValue(value); }
-  static ['decode:Date']({ value }) { return Date(value); }
-  static ['decode:Set']({ value }) { return Set(toValue(value)); }
-  static ['decode:Undefined']({ value }) { return value; }
-  static ['decode:Null']({ value }) { return value; }
+  static ['decode:Date']({ value }) { return new Date(value); }
+  // static ['decode:Set']({ value }) { return new Set(toValue(value)); }
+  // static ['decode:Map']({ value }) { return new Map(toValue(value)); }
+  static ['decode:Undefined']() { }
+  static ['decode:Null']() { return null; }
   static ['decode:String'](options) {
     const regex = /^<([A-Z]\w+)>([\w\W]*)$/;
     const match = options.value.match(regex) || [];
-    const [type, value] = match;
+    const [, type, value] = match;
     const convertor = type && Serialization[`decode:${type}`];
     if (convertor) {
       options.value = value;
@@ -113,15 +128,22 @@ export default class Serialization {
   }
   static ['decode:Number']({ value }) { return value; }
   static ['decode:Boolean']({ value }) { return value; }
+  // TODO dependent
   static ['decode:Array']({ value }) { return value; }
   static ['decode:Object']({ value, key, constructors, map }) {
+    if (key === METDATA) {
+      return value;
+    }
+
     const name = Serialization.getMetdata(value, 'constructor');
     const id = Serialization.getId(value);
 
-    if (typeof name === 'string' && typeof constructors[name] === 'function') {
-      Object.setPrototypeOf(value, constructors[name].prototype);
-    } else if (name !== 'Object') {
-      throw new Error(`\`"${key}": <Object ${name}>\` could not be decoded`);
+    if (typeof name === 'string') {
+      if (typeof constructors[name] === 'function') {
+        Object.setPrototypeOf(value, constructors[name].prototype);
+      } else if (name !== 'Object') {
+        throw new Error(`"${key}" decoding failed because the "${name}" type is not supported`);
+      }
     }
 
     if (Serialization.getMetdata(value, 'dependent')) {
@@ -130,9 +152,9 @@ export default class Serialization {
 
     return value;
   }
-  static ['decode:ObjectDependencie']({ value, key, map }) {
+  static ['decode:ObjectDependencie']({ value, key, map, context }) {
     const id = value;
-    const temp = '#ObjectDependencie#';
+    const temp = context[key];
     if (map.has(id)) {
       return map.get(id);
     }

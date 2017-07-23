@@ -1,3 +1,4 @@
+import { SourceLocation } from 'acorn';
 import {
   Source,
   RawSource,
@@ -22,8 +23,13 @@ import NormalModule from 'webpack/lib/NormalModule';
 import RawModule from 'webpack/lib/RawModule';
 // import WebpackMissingModule from 'webpack/lib/WebpackMissingModule';
 import HarmonyCompatibilityDependency from 'webpack/lib/dependencies/HarmonyCompatibilityDependency';
+import HarmonyImportDependency from 'webpack/lib/dependencies/HarmonyImportDependency';
+import HarmonyExportHeaderDependency from 'webpack/lib/dependencies/HarmonyExportHeaderDependency';
+import HarmonyExportExpressionDependency from 'webpack/lib/dependencies/HarmonyExportExpressionDependency';
+import ModuleReason from 'webpack/lib/ModuleReason';
 
 export default {
+  SourceLocation,
   Source,
   RawSource,
   OriginalSource,
@@ -43,4 +49,8 @@ export default {
   NormalModule,
   RawModule,
   HarmonyCompatibilityDependency,
+  HarmonyImportDependency,
+  HarmonyExportHeaderDependency,
+  HarmonyExportExpressionDependency,
+  ModuleReason,
 };

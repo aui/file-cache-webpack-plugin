@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`serialization data Unsupported types should be error 1`] = `"\\"function\\" encoding failed because the \\"Function\\" type is not supported"`;
