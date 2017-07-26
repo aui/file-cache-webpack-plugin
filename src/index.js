@@ -2,9 +2,9 @@
 import path from 'path';
 import findCacheDir from 'find-cache-dir';
 import { get, put } from './fs-cache';
-import Serialization from './serialization';
+import { encode, decode } from './serialization';
+import rules from './decode-rules';
 import versions from './versions';
-import whitelist from './whitelist';
 
 class FileCacheWebpackPlugin {
   constructor({
@@ -15,9 +15,11 @@ class FileCacheWebpackPlugin {
   } = {}) {
     this.cacheDirectory = cacheDirectory;
     this.cacheName = cacheName;
-    this.cacheFile = path.resolve(cacheName, cacheName);
-    this.serialization = new Serialization(whitelist);
+    this.cacheFile = path.resolve(cacheDirectory, cacheName);
     this.cacheVersion = cacheVersion;
+    this.cache = {
+      'fs-cache-webpack-plugin': versions.plugin,
+    };
   }
   apply(compiler) {
     if (Array.isArray(compiler.compilers)) {
@@ -27,25 +29,18 @@ class FileCacheWebpackPlugin {
         }));
       });
     } else {
+      compiler.options.cache = this.cache; // eslint-disable-line no-param-reassign
       compiler.plugin('watch-run', (...args) => this.loadCache(...args));
       compiler.plugin('run', (...args) => this.loadCache(...args));
-      compiler.plugin('make', (...args) => this.applyCache(...args));
       compiler.plugin('after-compile', (...args) => this.saveCache(...args));
     }
   }
-  applyCache(compilation, callback) {
-    if (!compilation.notCacheable && this.cacheStorage) {
-      compilation.cache = compilation.cache || {}; // eslint-disable-line no-param-reassign
-      Object.assign(compilation.cache, this.cacheStorage);
-    }
-    callback();
-  }
   loadCache(compiler, callback) {
     if (this.cacheFile) {
-      get(this.cacheFile, this.cacheVersion).then(data => this.serialization.parse(data)).then((cache) => {
-        this.cacheStorage = cache;
+      get(this.cacheFile, this.cacheVersion).then((cache) => {
+        Object.assign(this.cache, decode(cache, rules));
         callback();
-      }, () => {
+      }).catch(() => {
         callback();
       });
     } else {
@@ -57,8 +52,7 @@ class FileCacheWebpackPlugin {
       const done = () => {
         callback();
       };
-      const data = this.serialization.stringify(compilation.cache);
-      put(this.cacheFile, data, this.cacheVersion).then(done, done);
+      put(this.cacheFile, encode(compilation.cache), this.cacheVersion).then(done, done);
     } else {
       callback();
     }

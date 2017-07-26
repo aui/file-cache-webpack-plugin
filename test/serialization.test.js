@@ -1,41 +1,41 @@
 /* eslint-disable no-shadow */
-import Serialization from '../src/serialization';
-
-const serialization = new Serialization();
+import { encode, decode } from '../src/serialization';
 
 describe('serialization data', () => {
-  it('Should have the core functionality of `JSON.stringify`', () => {
+  const stringify = (target, rules) => JSON.stringify(encode(target, rules));
+  const parse = (target, rules) => decode(JSON.parse(target), rules);
+
+  it('Should have the core functionality of `JSON`', () => {
     const data = {
       string: '',
       number: 1,
       null: null,
-      object: { key: '' },
-      array: [''],
       boolean: true,
+      array: [{ string: '' }],
+      object: { string: '' },
     };
-    expect(serialization.stringify(data)).toBe(JSON.stringify(data));
-  });
-
-  it('Should have the core functionality of `JSON.parse`', () => {
-    const data = `{
-      "string": "",
-      "number": 1,
-      "null": null,
-      "object": { "key": "" },
-      "array": [""],
-      "boolean": true
-    }`;
-    const json = serialization.parse(data);
-    Serialization.removeMetdata(json);
-    Serialization.removeMetdata(json.object);
-    expect(JSON.stringify(json)).toBe(JSON.stringify(JSON.parse(data)));
+    const string = stringify(data);
+    const json = parse(string);
+    expect(json.string).toBe(data.string);
+    expect(json.number).toBe(data.number);
+    expect(json.null).toBe(data.null);
+    expect(json.boolean).toBe(data.boolean);
+    expect(json.array[0].string).toBe(data.array[0].string);
+    expect(json.object.string).toBe(data.object.string);
   });
 
   it('Unsupported types should be error', () => {
+    class Test {
+      value() {
+        return this._value;
+      }
+    }
     const data = {
-      function: () => {},
+      test: new Test(),
     };
-    expect(() => serialization.stringify(data)).toThrowErrorMatchingSnapshot();
+    const string = stringify(data);
+    const json = parse(string);
+    expect(() => json.test.value).toThrowErrorMatchingSnapshot();
   });
 
   it('Should support the circular structure', () => {
@@ -53,12 +53,21 @@ describe('serialization data', () => {
     data.child.self = data.child;
     data.child.child.parent = data.child;
     data.child.child.self = data.child.child;
-    const json = serialization.parse(serialization.stringify(data));
+
+    data.childs = [data.child, data.child.child];
+    data.child.child.parents = [data.child, data];
+
+    const json = parse(stringify(data));
     expect(json.self.id).toBe(json.id);
     expect(json.child.parent.id).toBe(json.id);
     expect(json.child.self.id).toBe(json.child.id);
     expect(json.child.child.parent.id).toBe(json.child.id);
     expect(json.child.child.self.id).toBe(json.child.child.id);
+
+    expect(json.childs[0].id).toBe(json.child.id);
+    expect(json.childs[1].id).toBe(json.child.child.id);
+    expect(json.child.child.parents[0].id).toBe(json.child.id);
+    expect(json.child.child.parents[1].id).toBe(json.id);
   });
 
   it('Should support the whitelist `class`', () => {
@@ -74,13 +83,14 @@ describe('serialization data', () => {
         return this._raw;
       }
     }
-    const whitelist = { RawSource };
-
+    decode.rules.RawSource = (value) => {
+      Object.setPrototypeOf(value, RawSource.prototype);
+      return value;
+    };
     const data = {
       file: new RawSource('/hello.js', '🍪'),
     };
-    const serialization = new Serialization(whitelist);
-    const json = serialization.parse(serialization.stringify(data));
+    const json = parse(stringify(data));
     expect(json.file instanceof RawSource).toBe(true);
     expect(json.file.path()).toBe(data.file.path());
     expect(json.file.source()).toBe(data.file.source());
@@ -91,8 +101,8 @@ describe('serialization data', () => {
       const data = {
         regexp: /^\s+$/ig,
       };
-      const string = serialization.stringify(data);
-      const json = serialization.parse(string);
+      const string = stringify(data);
+      const json = parse(string);
       expect(json.regexp).not.toBe(data.regexp);
       expect(json.regexp instanceof RegExp).toBe(true);
       expect(json.regexp.toString()).toBe(data.regexp.toString());
@@ -101,25 +111,25 @@ describe('serialization data', () => {
       const data = {
         date: new Date(),
       };
-      const string = serialization.stringify(data);
-      const json = serialization.parse(string);
+      const string = stringify(data);
+      const json = parse(string);
       expect(json.date).not.toBe(data.date);
       expect(json.date instanceof Date).toBe(true);
       expect(json.date.toString()).toBe(data.date.toString());
     });
-    // it('Should support `Map`', () => {
-    //   const data = {
-    //     map: new Map([
-    //       [1, 'hello'],
-    //       [2, 'world'],
-    //       [3, '.'],
-    //     ]),
-    //   };
-    //   const string = serialization.stringify(data);
-    //   const json = serialization.parse(string);
-    //   expect(json.map).not.toBe(data.map);
-    //   expect(json.map instanceof Date).toBe(true);
-    //   expect(json.map.toString()).toBe(data.map.toString());
-    // });
+    it('Should support `Map`', () => {
+      const data = {
+        map: new Map([
+          [1, 'hello'],
+          [2, 'world'],
+          [3, '.'],
+        ]),
+      };
+      const string = stringify(data);
+      const json = parse(string);
+      expect(json.map).not.toBe(data.map);
+      expect(json.map instanceof Map).toBe(true);
+      expect(JSON.stringify([...json.map])).toBe(JSON.stringify([...data.map]));
+    });
   });
 });
