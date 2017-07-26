@@ -27,7 +27,7 @@ import ModuleReason from 'webpack/lib/ModuleReason';
 import Chunk from 'webpack/lib/Chunk';
 import Entrypoint from 'webpack/lib/Entrypoint';
 import Parser from 'webpack/lib/Parser';
-import { decode } from './serialization';
+import { encode, decode } from './serialization';
 
 
 const modules = {
@@ -60,10 +60,18 @@ const modules = {
   Parser,
 };
 
-export default Object.keys(modules).reduce((map, name) => {
-  map[name] = (value) => { // eslint-disable-line no-param-reassign
+
+export const encodeRules = Object.create(encode.rules);
+export const decodeRules = Object.create(decode.rules);
+
+Object.keys(modules).forEach((name) => {
+  decodeRules[name] = (value) => { // eslint-disable-line no-param-reassign
     Object.setPrototypeOf(value, modules[name].prototype);
     return value;
   };
-  return map;
-}, decode.rules);
+});
+
+encodeRules.Function = value => `function ${value.name}() { [...] }`;
+decodeRules.Function = (value, key) => {
+  throw new Error(`\`${key}\` does not support decoding: \`${value}\``);
+};

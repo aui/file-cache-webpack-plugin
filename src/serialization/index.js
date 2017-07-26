@@ -2,16 +2,12 @@
 import each from './object-each';
 import clone from './object-clone';
 
-
-const VERSION = '1.0.0';
 const REFERENCE = '@REF:';
-const UNKNOWN = 'UNKNOWN';
-
+const UNKNOWN = '@UNKNOWN';
 
 export const encode = (target, rules = encode.rules) => {
   const references = [];
   const cache = {
-    version: VERSION,
     keys: [],
     values: [],
     types: [],
@@ -53,10 +49,6 @@ export const encode = (target, rules = encode.rules) => {
 
 
 export const decode = (target, rules = decode.rules) => {
-  if (target.version !== VERSION) {
-    throw new Error('version does not match');
-  }
-
   ['values', 'keys', 'types'].forEach((name) => {
     if (!Array.isArray(target[name])) {
       throw new Error(`invalid format \`${name}\``);
@@ -111,6 +103,9 @@ encode.rules.RegExp = value => [value.source, value.flags];
 decode.rules.RegExp = value => new RegExp(value[0], value[1]);
 encode.rules.Date = value => value.toString();
 decode.rules.Date = value => new Date(value);
+encode.rules.Buffer = value => JSON.stringify(value);
+decode.rules.Buffer = value => new Buffer(JSON.parse(value));
+
 decode.rules[UNKNOWN] = (value, key) => new Proxy(value, {
   get(target, name) {
     if (Reflect.has(target, name)) {

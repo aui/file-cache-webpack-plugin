@@ -3,7 +3,7 @@ import path from 'path';
 import findCacheDir from 'find-cache-dir';
 import { get, put } from './fs-cache';
 import { encode, decode } from './serialization';
-import rules from './decode-rules';
+import { encodeRules, decodeRules } from './serialization-rules';
 import versions from './versions';
 
 class FileCacheWebpackPlugin {
@@ -38,7 +38,7 @@ class FileCacheWebpackPlugin {
   loadCache(compiler, callback) {
     if (this.cacheFile) {
       get(this.cacheFile, this.cacheVersion).then((cache) => {
-        Object.assign(this.cache, decode(cache, rules));
+        Object.assign(this.cache, decode(cache, decodeRules));
         callback();
       }).catch(() => {
         callback();
@@ -52,7 +52,7 @@ class FileCacheWebpackPlugin {
       const done = () => {
         callback();
       };
-      put(this.cacheFile, encode(compilation.cache), this.cacheVersion).then(done, done);
+      put(this.cacheFile, encode(compilation.cache, encodeRules), this.cacheVersion).then(done, done);
     } else {
       callback();
     }

@@ -131,5 +131,15 @@ describe('serialization data', () => {
       expect(json.map instanceof Map).toBe(true);
       expect(JSON.stringify([...json.map])).toBe(JSON.stringify([...data.map]));
     });
+    it('Should support `Buffer`', () => {
+      const data = {
+        buffter: new Buffer('hello'),
+      };
+      const string = stringify(data);
+      const json = parse(string);
+      expect(json.buffter).not.toBe(data.buffter);
+      expect(json.buffter instanceof Buffer).toBe(true);
+      expect(JSON.stringify(json.buffter)).toBe(JSON.stringify(json.buffter));
+    });
   });
 });
