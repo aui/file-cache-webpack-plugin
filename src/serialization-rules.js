@@ -76,7 +76,7 @@ decodeRules.Function = value => new Function(`
   try {
     return ${value}
   } catch (error) {
-    error.message = 'FileCacheWebpackPlugin - Function failed to run: ' + error.message;
+    error.message = 'FileCacheWebpackPlugin - <eval cache>: ' + error.message;
     throw error;
   }
 `)();
