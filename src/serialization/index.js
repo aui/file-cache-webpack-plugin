@@ -55,32 +55,32 @@ export const decode = (target, rules = decode.rules) => {
     }
   });
 
-  const values = [];
-  target.values.forEach((value, index) => {
-    const type = target.types[index];
-    const convertor = rules[type] || rules[UNKNOWN];
-    const key = target.keys[index];
-    values[index] = convertor(value, key);
-  });
-
   const references = [];
   each(target.values, (value, key, context) => {
     if (typeof value === 'string' && value.indexOf(REFERENCE) === 0) {
-      const reference = values[value.split(REFERENCE)[1]];
-      if (!reference) {
-        throw new Error('can not find a reference');
-      }
       references.push({
-        context: values.indexOf(context),
+        context: target.values.indexOf(context),
         key,
-        reference,
+        reference: value.split(REFERENCE)[1],
       });
     }
     return value;
   });
 
+  const values = [];
+  target.values.forEach((value, index) => {
+    const type = target.types[index];
+    const convertor = rules[type] || rules[UNKNOWN];
+    const key = target.keys[index];
+    values[index] = convertor(clone(value), key);
+  });
+
   references.forEach(({ context, key, reference }) => {
-    values[context][key] = reference;
+    const object = values[reference];
+    if (!object) {
+      throw new ReferenceError(`can not find a reference: ${reference}`);
+    }
+    values[context][key] = object;
   });
 
   return values[0];
@@ -115,6 +115,7 @@ decode.rules[UNKNOWN] = (value, key) => new Proxy(value, {
   },
   set(target, name, val) {
     Reflect.set(target, name, val);
+    return true;
   },
 });
 

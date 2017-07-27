@@ -71,7 +71,12 @@ Object.keys(modules).forEach((name) => {
   };
 });
 
-encodeRules.Function = value => `function ${value.name}() { [...] }`;
-decodeRules.Function = (value, key) => {
-  throw new Error(`\`${key}\` does not support decoding: \`${value}\``);
-};
+/* eslint-disable no-new-func */
+decodeRules.Function = value => new Function(`
+  try {
+    return ${value}
+  } catch (error) {
+    error.message = 'FileCacheWebpackPlugin - Function failed to run: ' + error.message;
+    throw error;
+  }
+`)();

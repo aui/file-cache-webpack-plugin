@@ -6,26 +6,28 @@ import { encode, decode } from './serialization';
 import { encodeRules, decodeRules } from './serialization-rules';
 import versions from './versions';
 
+let idx = 0;
+
 class FileCacheWebpackPlugin {
   constructor({
     cacheDirectory = findCacheDir({ name: 'fs-cache-webpack-plugin' }),
-    cacheName = 'cache.json',
     cacheVersion = `${versions.webpack}|${versions.plugin}`,
-    // TODO cacheMax
+    // TODO cacheMaxsize
   } = {}) {
     this.cacheDirectory = cacheDirectory;
-    this.cacheName = cacheName;
-    this.cacheFile = path.resolve(cacheDirectory, cacheName);
     this.cacheVersion = cacheVersion;
+    this.cacheFile = path.resolve(cacheDirectory, `cache.${idx}.json`);
     this.cache = {
       'fs-cache-webpack-plugin': versions.plugin,
     };
+    idx += 1;
   }
   apply(compiler) {
     if (Array.isArray(compiler.compilers)) {
-      compiler.compilers.forEach((c, idx) => {
+      compiler.compilers.forEach((c) => {
         c.apply(new FileCacheWebpackPlugin({
-          cacheName: `${idx}.${this.cacheName}`,
+          cacheDirectory: this.cacheDirectory,
+          cacheVersion: this.cacheVersion,
         }));
       });
     } else {
@@ -37,22 +39,39 @@ class FileCacheWebpackPlugin {
   }
   loadCache(compiler, callback) {
     if (this.cacheFile) {
-      get(this.cacheFile, this.cacheVersion).then((cache) => {
-        Object.assign(this.cache, decode(cache, decodeRules));
-        callback();
-      }).catch(() => {
-        callback();
-      });
+      get(this.cacheFile, this.cacheVersion)
+        .then((cache) => {
+          try {
+            return decode(cache, decodeRules);
+          } catch (error) {
+            error.message = `FileCacheWebpackPlugin - Serialization failed: ${error.message}`;
+            return Promise.reject(error);
+          }
+        })
+        .then((cache) => {
+          Object.assign(this.cache, cache);
+          callback();
+        })
+        .catch(() => {
+          callback();
+        });
     } else {
       callback();
     }
   }
   saveCache(compilation, callback) {
     if (this.cacheFile) {
-      const done = () => {
+      let cache;
+      try {
+        cache = encode(compilation.cache, encodeRules);
+      } catch (error) {
+        compilation.warnings.push(`FileCacheWebpackPlugin - Serialization failed: ${error}`);
         callback();
-      };
-      put(this.cacheFile, encode(compilation.cache, encodeRules), this.cacheVersion).then(done, done);
+      }
+      put(this.cacheFile, cache, this.cacheVersion).then(() => callback()).catch((error) => {
+        compilation.warnings.push(`FileCacheWebpackPlugin - Update cache failed: ${error}`);
+        callback();
+      });
     } else {
       callback();
     }

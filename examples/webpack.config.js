@@ -1,7 +1,6 @@
 const path = require('path');
 const FileCacheWebpackPlugin = require('../');
 
-const fileCacheWebpackPlugin = new FileCacheWebpackPlugin();
 const PATHS = {
   app: path.join(__dirname, 'app'),
   another: path.join(__dirname, 'another'),
@@ -18,7 +17,7 @@ module.exports = [
       filename: '[name].js',
     },
     plugins: [
-      fileCacheWebpackPlugin,
+      new FileCacheWebpackPlugin(),
     ],
   },
   {
@@ -31,7 +30,7 @@ module.exports = [
       filename: '[name].js',
     },
     plugins: [
-      fileCacheWebpackPlugin,
+      new FileCacheWebpackPlugin(),
     ],
   },
 ];
