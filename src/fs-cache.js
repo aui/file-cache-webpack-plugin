@@ -3,15 +3,15 @@ import path from 'path';
 import { promisify } from 'util';
 
 const mkdirs = (dirname, callback) => {
-  fs.access(dirname, (errors) => {
-    if (errors) {
-      mkdirs(path.dirname(dirname), () => {
-        fs.mkdir(dirname, callback);
-      });
-    } else {
+  try {
+    fs.accessSync(dirname);
+    callback();
+  } catch (errors) {
+    mkdirs(path.dirname(dirname), () => {
+      fs.mkdirSync(dirname);
       callback();
-    }
-  });
+    });
+  }
 };
 
 const readFile = promisify(fs.readFile);
