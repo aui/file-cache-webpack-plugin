@@ -1,19 +1,17 @@
-const each = (
-  target,
-  callback,
-  key = '',
-  context = target,
-  cache = new Set(),
-) => {
-  callback.call(context, target, key, context);
-  if (target !== null && typeof target === 'object' && !cache.has(target)) {
-    cache.add(target);
-    for (const index in target) {
-      if (Object.prototype.hasOwnProperty.call(target, index)) {
-        each(target[index], callback, index, target, cache);
-      }
+export default (target, callback) => {
+  callback.call(target, target, null, target);
+
+  const cache = new WeakSet();
+  const keys = target[Symbol.iterator] ? [...target.keys()] : Object.keys(target);
+  const contexts = keys.map(k => [target[k], k, target]);
+
+  while (contexts.length) {
+    const [value, key, context] = contexts.shift();
+    callback.call(context, value, key, context);
+    if (value !== null && typeof value === 'object' && !cache.has(value)) {
+      cache.add(value);
+      const indexs = value[Symbol.iterator] ? [...value.keys()] : Object.keys(value);
+      contexts.push(...indexs.map(k => [value[k], k, value]));
     }
   }
 };
-
-export default (target, callback) => each(target, callback);

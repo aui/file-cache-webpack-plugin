@@ -8,18 +8,17 @@ import versions from './versions';
 
 let idx = 0;
 
-class FileCacheWebpackPlugin {
+export default class FileCacheWebpackPlugin {
   constructor({
     cacheDirectory = findCacheDir({ name: 'fs-cache-webpack-plugin' }),
     cacheVersion = `${versions.webpack}|${versions.plugin}`,
+    cacheId = idx,
     // TODO cacheMaxsize
   } = {}) {
     this.cacheDirectory = cacheDirectory;
     this.cacheVersion = cacheVersion;
-    this.cacheFile = path.resolve(cacheDirectory, `cache.${idx}.json`);
-    this.cache = {
-      'fs-cache-webpack-plugin': versions.plugin,
-    };
+    this.cacheFile = path.resolve(cacheDirectory, `${cacheId}.json`);
+    this.cache = {};
     idx += 1;
   }
   apply(compiler) {
@@ -34,7 +33,7 @@ class FileCacheWebpackPlugin {
       compiler.options.cache = this.cache; // eslint-disable-line no-param-reassign
       compiler.plugin('watch-run', (...args) => this.loadCache(...args));
       compiler.plugin('run', (...args) => this.loadCache(...args));
-      compiler.plugin('after-compile', (...args) => this.saveCache(...args));
+      compiler.plugin('done', (...args) => this.saveCache(...args));
     }
   }
   loadCache(compiler, callback) {
@@ -59,23 +58,12 @@ class FileCacheWebpackPlugin {
       callback();
     }
   }
-  saveCache(compilation, callback) {
+  saveCache() {
     if (this.cacheFile) {
-      let cache;
-      try {
-        cache = encode(compilation.cache, encodeRules);
-      } catch (error) {
-        compilation.warnings.push(`FileCacheWebpackPlugin - Serialization failed: ${error}`);
-        callback();
-      }
-      put(this.cacheFile, cache, this.cacheVersion).then(() => callback()).catch((error) => {
-        compilation.warnings.push(`FileCacheWebpackPlugin - Update cache failed: ${error}`);
-        callback();
+      put(this.cacheFile, encode(this.cache, encodeRules), this.cacheVersion).catch((error) => {
+        error.message = `FileCacheWebpackPlugin - Update cache failed: ${error.message}`; // eslint-disable-line no-param-reassign
+        return Promise.reject(error);
       });
-    } else {
-      callback();
     }
   }
 }
-
-export default FileCacheWebpackPlugin;
