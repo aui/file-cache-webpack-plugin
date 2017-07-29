@@ -8,7 +8,7 @@ module.exports = (env = {}) => {
       libs: './src/libs.js',
     },
     output: {
-      path: path.join(__dirname, 'dist'),
+      path: path.join(__dirname, 'dist', env.fscache ? 'fscache-on' : 'fscache-off'),
       filename: '[name].[hash].js',
     },
     module: {
