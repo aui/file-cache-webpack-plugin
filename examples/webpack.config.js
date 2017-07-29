@@ -22,7 +22,6 @@ module.exports = (env = {}) => {
         }],
       }],
     },
-    devtool: 'source-map',
     plugins: [
       env.fscache ? new FsCacheWebpackPlugin() : () => {},
     ],

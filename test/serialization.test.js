@@ -1,5 +1,7 @@
 /* eslint-disable no-shadow */
 import { encode, decode } from '../src/serialization';
+import { decode as decodeRules } from '../src/serialization/rules';
+
 
 describe('serialization data', () => {
   const stringify = (target, rules) => JSON.stringify(encode(target, rules));
@@ -83,7 +85,7 @@ describe('serialization data', () => {
         return this._raw;
       }
     }
-    decode.rules.RawSource = (value) => {
+    decodeRules.RawSource = (value) => {
       Object.setPrototypeOf(value, RawSource.prototype);
       return value;
     };

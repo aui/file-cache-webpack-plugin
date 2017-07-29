@@ -1,10 +1,11 @@
 /* eslint-disable no-new-func, no-new-wrappers, no-console */
 import each from './object-each';
+import { encode as encodeRules, decode as decodeRules } from './rules';
 
 const REFERENCE = '@REF:';
 const UNKNOWN = '@UNKNOWN';
 
-export const encode = (target, rules = encode.rules) => {
+export const encode = (target, rules = encodeRules) => {
   console.time('serialization.encode()');
   const cache = new Map();
   const result = {
@@ -37,7 +38,7 @@ export const encode = (target, rules = encode.rules) => {
 };
 
 
-export const decode = (target, rules = decode.rules) => {
+export const decode = (target, rules = decodeRules) => {
   console.time('serialization.decode()');
   ['values', 'keys', 'types'].forEach((name) => {
     if (!Array.isArray(target[name])) {

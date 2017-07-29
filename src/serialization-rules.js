@@ -27,7 +27,7 @@ import ModuleReason from 'webpack/lib/ModuleReason';
 import Chunk from 'webpack/lib/Chunk';
 import Entrypoint from 'webpack/lib/Entrypoint';
 import Parser from 'webpack/lib/Parser';
-import { encode, decode } from './serialization';
+import { encode, decode } from './serialization/rules';
 
 
 const modules = {
@@ -61,8 +61,8 @@ const modules = {
 };
 
 
-export const encodeRules = Object.create(encode.rules);
-export const decodeRules = Object.create(decode.rules);
+export const encodeRules = Object.create(encode);
+export const decodeRules = Object.create(decode);
 
 Object.keys(modules).forEach((name) => {
   decodeRules[name] = (value) => { // eslint-disable-line no-param-reassign
